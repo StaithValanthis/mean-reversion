@@ -86,3 +86,27 @@ def next_rebalance_time(
         next_time = current_time.replace(hour=next_hour, minute=0, second=0, microsecond=0)
     return next_time.replace(tzinfo=timezone.utc)
 
+
+def timeframe_to_minutes(timeframe: str) -> int:
+    """
+    Convert a ccxt/pandas-style timeframe string into minutes.
+
+    Supported:
+    - 'Xm' minutes
+    - 'Xh' hours
+    - 'Xd' days
+    """
+    tf = timeframe.strip().lower()
+    if tf.endswith("m"):
+        return int(tf[:-1])
+    if tf.endswith("h"):
+        return int(tf[:-1]) * 60
+    if tf.endswith("d"):
+        return int(tf[:-1]) * 24 * 60
+    raise ValueError(f"Unsupported timeframe: {timeframe}")
+
+
+def timeframe_to_hours(timeframe: str) -> float:
+    """Convert timeframe string to hours (float)."""
+    return timeframe_to_minutes(timeframe) / 60.0
+

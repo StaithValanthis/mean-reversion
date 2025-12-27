@@ -56,6 +56,16 @@ Download historical data for backtesting:
 python scripts/download_data.py --config config/config.yaml --days 30 --universe
 ```
 
+## Parameter/Timeframe Optimization
+
+Run a small grid-search (with optional walk-forward scoring):
+
+```bash
+python scripts/optimize.py --config config/config.yaml --output opt_results/
+```
+
+See `docs/OPTIMIZATION.md` for details.
+
 ### 4. Run Backtest (Manual Install)
 
 ```bash

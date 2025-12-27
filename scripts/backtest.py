@@ -69,6 +69,7 @@ def main():
     strategy = CrossSectionalReversalStrategy(
         quantile=config["strategy"]["quantile"],
         ret_lookback_hours=config["strategy"]["ret_lookback_hours"],
+        timeframe=config["data"]["timeframe"],
         regime_detector=regime_detector,
         regime_enabled=config["strategy"]["regime"]["enabled"],
     )

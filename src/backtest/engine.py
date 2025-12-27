@@ -80,25 +80,50 @@ class BacktestEngine:
         Returns:
             Equity curve DataFrame
         """
-        self.initial_equity = initial_equity
-        equity = initial_equity
-        self.positions = {}
-        self.position_entries = {}
-        self.total_fees = 0.0
-
-        # Load data for all symbols
-        logger.info(f"Loading data for {len(symbols)} symbols")
-        universe_data = {}
+        # Load data for all symbols, then delegate to run_on_data()
+        logger.info(f"Loading data for {len(symbols)} symbols (timeframe={self.timeframe})")
+        universe_data: Dict[str, pd.DataFrame] = {}
         for symbol in symbols:
-            df = self.storage.load_candles(
-                symbol, self.timeframe, start_date=start_date, end_date=end_date
-            )
+            df = self.storage.load_candles(symbol, self.timeframe, start_date=start_date, end_date=end_date)
             if df is not None and len(df) > 0:
                 universe_data[symbol] = df
 
         if not universe_data:
             logger.error("No data loaded for backtest")
             return pd.DataFrame()
+
+        return self.run_on_data(
+            universe_data=universe_data,
+            start_date=start_date,
+            end_date=end_date,
+            initial_equity=initial_equity,
+        )
+
+    def run_on_data(
+        self,
+        universe_data: Dict[str, pd.DataFrame],
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        initial_equity: float = 100000.0,
+    ) -> pd.DataFrame:
+        """
+        Run backtest on pre-loaded candle data (used by optimizers/timeframe resampling).
+
+        Args:
+            universe_data: {symbol: candles_df} with columns timestamp/open/high/low/close/volume
+            start_date: Optional start datetime (inclusive)
+            end_date: Optional end datetime (inclusive)
+            initial_equity: Initial equity value
+
+        Returns:
+            Equity curve DataFrame
+        """
+        self.initial_equity = initial_equity
+        equity = initial_equity
+        self.positions = {}
+        self.position_entries = {}
+        self.total_fees = 0.0
+        self.equity_curve = []
 
         # Get date range
         all_timestamps = set()

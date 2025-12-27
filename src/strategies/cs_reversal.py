@@ -1,5 +1,7 @@
 """Cross-sectional reversal strategy."""
-from typing import Dict, List, Optional
+from __future__ import annotations
+
+from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -7,6 +9,7 @@ import pandas as pd
 from src.common.log import setup_logger
 from src.common.math import quantile_cut
 from src.data.candles import normalize_symbol
+from src.common.time import timeframe_to_hours
 from src.strategies.regime import RegimeDetector
 
 logger = setup_logger(__name__)
@@ -19,6 +22,7 @@ class CrossSectionalReversalStrategy:
         self,
         quantile: float = 0.2,
         ret_lookback_hours: int = 24,
+        timeframe: str = "1h",
         regime_detector: Optional[RegimeDetector] = None,
         regime_enabled: bool = True,
     ):
@@ -27,12 +31,14 @@ class CrossSectionalReversalStrategy:
 
         Args:
             quantile: Quantile for top/bottom selection (e.g., 0.2 = top/bottom 20%)
-            ret_lookback_hours: Lookback hours for return calculation
+            ret_lookback_hours: Lookback in HOURS for return calculation (e.g., 24 = 24h return)
+            timeframe: Candle timeframe used for the input data (e.g., '1h', '4h')
             regime_detector: Optional regime detector
             regime_enabled: Whether to apply regime gating
         """
         self.quantile = quantile
         self.ret_lookback_hours = ret_lookback_hours
+        self.timeframe = timeframe
         self.regime_detector = regime_detector or RegimeDetector()
         self.regime_enabled = regime_enabled
 
@@ -51,10 +57,14 @@ class CrossSectionalReversalStrategy:
         Returns:
             Series of returns
         """
-        if len(df) < lookback_hours + 1:
+        tf_hours = timeframe_to_hours(self.timeframe)
+        lookback_bars = max(1, int(round(lookback_hours / tf_hours)))
+
+        if len(df) < lookback_bars + 1:
             return pd.Series(dtype=float)
 
-        returns = df["close"] / df["close"].shift(lookback_hours) - 1
+        # ret_24h style: close / close.shift(N bars) - 1
+        returns = df["close"] / df["close"].shift(lookback_bars) - 1
         return returns
 
     def generate_signals(
@@ -80,9 +90,6 @@ class CrossSectionalReversalStrategy:
         valid_symbols = []
 
         for symbol, df in universe_data.items():
-            if len(df) < self.ret_lookback_hours + 1:
-                continue
-
             df_sorted = df.sort_values("timestamp")
             returns = self.calculate_returns(df_sorted, self.ret_lookback_hours)
 

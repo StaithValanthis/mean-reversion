@@ -16,7 +16,7 @@ If you encounter the error:
 ModuleNotFoundError: No module named 'src'
 ```
 
-This happens when Python can't find the `src` module because PYTHONPATH is not set.
+This was happening because Python couldn't find the `src` module. **This has been fixed** by adding automatic path setup in all scripts. The scripts now automatically add the project root to sys.path, so they work regardless of PYTHONPATH settings.
 
 ## Quick Fix
 
@@ -45,7 +45,6 @@ Or manually fix the service file:
 
 2. In the `[Service]` section:
    - Remove the `User=` line (for user-level services)
-   - Add: `Environment="PYTHONPATH=/home/ubuntu/mean-reversion"` (replace with your actual path)
 
    The `[Service]` section should look like:
    ```ini
@@ -53,7 +52,6 @@ Or manually fix the service file:
    Type=simple
    WorkingDirectory=/home/ubuntu/mean-reversion
    Environment="PATH=/home/ubuntu/mean-reversion/.venv/bin:$PATH"
-   Environment="PYTHONPATH=/home/ubuntu/mean-reversion"
    EnvironmentFile=/home/ubuntu/mean-reversion/.env
    ExecStart=/home/ubuntu/mean-reversion/.venv/bin/python /home/ubuntu/mean-reversion/scripts/live.py --config /home/ubuntu/mean-reversion/config/config.yaml --paper
    Restart=always
@@ -71,5 +69,5 @@ Or manually fix the service file:
 
 The updated installer script (install.sh) now handles both issues correctly:
 - User-level services don't include `User=` directive
-- PYTHONPATH is set to the project root directory
+- Scripts automatically add the project root to sys.path (no PYTHONPATH needed)
 

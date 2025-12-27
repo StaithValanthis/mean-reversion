@@ -1,10 +1,16 @@
 """Run backtest."""
 import argparse
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from src.backtest.engine import BacktestEngine
 from src.backtest.metrics import calculate_metrics, print_metrics, save_metrics

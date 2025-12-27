@@ -261,7 +261,9 @@ if [[ "$INSTALL_SYSTEMD" =~ ^[Yy]$ ]]; then
     fi
     
     # Create service file
-    cat > "$SERVICE_FILE" << EOF
+    if [[ "$IS_ROOT" == "true" ]]; then
+        # System-wide service
+        cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=Bybit Mean Reversion Trading Bot
 After=network.target
@@ -271,6 +273,29 @@ Type=simple
 User=$USER
 WorkingDirectory=$WORK_DIR
 Environment="PATH=$WORK_DIR/.venv/bin:$PATH"
+Environment="PYTHONPATH=$WORK_DIR"
+EnvironmentFile=$WORK_DIR/.env
+ExecStart=$VENV_PYTHON $WORK_DIR/scripts/live.py --config $WORK_DIR/config/config.yaml --paper
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    else
+        # User-level service (no User= directive)
+        cat > "$SERVICE_FILE" << EOF
+[Unit]
+Description=Bybit Mean Reversion Trading Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$WORK_DIR
+Environment="PATH=$WORK_DIR/.venv/bin:$PATH"
+Environment="PYTHONPATH=$WORK_DIR"
 EnvironmentFile=$WORK_DIR/.env
 ExecStart=$VENV_PYTHON $WORK_DIR/scripts/live.py --config $WORK_DIR/config/config.yaml --paper
 Restart=always
@@ -281,6 +306,7 @@ StandardError=journal
 [Install]
 WantedBy=default.target
 EOF
+    fi
 
     if [[ "$IS_ROOT" != "true" ]]; then
         # Enable user-level systemd services

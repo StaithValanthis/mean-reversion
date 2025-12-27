@@ -1,0 +1,21 @@
+# Optional docker compose for future services (Postgres/Timescale, etc.)
+# Not required for v1 - using SQLite for now
+
+version: '3.8'
+
+services:
+  # Optional: Uncomment to use Postgres/TimescaleDB instead of SQLite
+  # postgres:
+  #   image: timescale/timescaledb:latest-pg15
+  #   environment:
+  #     POSTGRES_DB: trading
+  #     POSTGRES_USER: trader
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_data:
+

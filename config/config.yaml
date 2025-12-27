@@ -1,0 +1,88 @@
+# Mean Reversion Trading Bot Configuration
+
+# Exchange settings
+exchange:
+  name: bybit
+  testnet: true  # Safe default: use testnet
+  api_key_env: BYBIT_API_KEY
+  api_secret_env: BYBIT_API_SECRET
+  testnet_env: BYBIT_TESTNET  # Optional override via env var
+  rate_limit_requests_per_second: 10
+  rate_limit_retries: 3
+  request_timeout: 30
+
+# Universe selection
+universe:
+  top_n: 50  # Top N symbols by 24h volume
+  quote: USDT
+  contract_type: swap  # USDT Perpetual
+  blacklist: []  # Symbols to exclude (e.g., ["1000PEPEUSDT"])
+  min_24h_volume_usdt: 10000000  # Minimum 10M USDT volume
+  min_history_bars: 100  # Minimum bars required for trading
+  min_spread_bps: 5  # Minimum spread in basis points (reject if too wide)
+
+# Data settings
+data:
+  timeframe: 1h  # 1 hour candles
+  storage_path: data/
+  cache_db: data/cache.sqlite
+  start_date: null  # null = use available data
+  end_date: null  # null = use latest
+
+# Strategy parameters
+strategy:
+  quantile: 0.2  # Top/bottom 20% for long/short
+  rebalance_hours: 4  # Rebalance every 4 hours
+  ret_lookback_hours: 24  # 24-hour return for ranking
+  regime:
+    enabled: true
+    lookback_symbol: BTCUSDT  # Use BTC for regime detection
+    adx_period: 14
+    ema_period: 50
+    adx_threshold: 25  # ADX above this = strong trend
+    ema_slope_threshold: 0.0001  # EMA slope threshold
+    scale_factor: 0.25  # Scale down exposure in strong trends
+
+# Portfolio construction
+portfolio:
+  vol_window: 72  # 72 bars (3 days) for volatility calculation
+  target_gross_exposure: 1.0  # 100% of equity per side
+  per_symbol_cap: 0.05  # 5% of equity per symbol
+  dollar_neutrality_tolerance: 0.02  # Within 2% of dollar neutral
+
+# Execution settings
+execution:
+  post_only: true  # Prefer maker orders
+  timeout_sec: 60  # Cancel order if not filled within 60 seconds
+  max_retries: 3
+  partial_fill_timeout: 300  # 5 minutes for partial fills
+
+# Fee and slippage assumptions
+fees:
+  maker_bps: 0.2  # 0.02% maker fee
+  taker_bps: 0.55  # 0.055% taker fee
+  funding_rate_bps: 0.01  # 0.01% per 8h funding (approximate)
+  slippage_bps: 2  # 2 bps slippage assumption for backtest
+
+# Risk management
+risk:
+  leverage_cap: 2.0  # Maximum 2x leverage
+  daily_loss_cap: -0.02  # -2% daily loss limit
+  max_drawdown_cap: -0.10  # -10% from high watermark
+  circuit_breaker:
+    enabled: true
+    max_consecutive_errors: 10
+    cooldown_seconds: 300  # 5 minutes cooldown
+  extreme_vol_guard:
+    enabled: true
+    symbol: BTCUSDT
+    threshold_multiplier: 3.0  # 3x volatility
+    halt_duration_hours: 2
+
+# Runtime settings
+runtime:
+  mode: paper  # paper or live (default: paper for safety)
+  log_level: INFO
+  log_file: logs/bot.log
+  equity_curve_file: data/equity_curve.csv
+

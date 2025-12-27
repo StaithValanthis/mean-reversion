@@ -275,7 +275,7 @@ WorkingDirectory=$WORK_DIR
 Environment="PATH=$WORK_DIR/.venv/bin:$PATH"
 Environment="PYTHONPATH=$WORK_DIR"
 EnvironmentFile=$WORK_DIR/.env
-ExecStart=$VENV_PYTHON $WORK_DIR/scripts/live.py --config $WORK_DIR/config/config.yaml --paper
+ExecStart=/bin/bash -c "cd $WORK_DIR && PYTHONPATH=$WORK_DIR $VENV_PYTHON scripts/live.py --config config/config.yaml --paper"
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -297,7 +297,7 @@ WorkingDirectory=$WORK_DIR
 Environment="PATH=$WORK_DIR/.venv/bin:$PATH"
 Environment="PYTHONPATH=$WORK_DIR"
 EnvironmentFile=$WORK_DIR/.env
-ExecStart=$VENV_PYTHON $WORK_DIR/scripts/live.py --config $WORK_DIR/config/config.yaml --paper
+ExecStart=/bin/bash -c "cd $WORK_DIR && PYTHONPATH=$WORK_DIR $VENV_PYTHON scripts/live.py --config config/config.yaml --paper"
 Restart=always
 RestartSec=10
 StandardOutput=journal

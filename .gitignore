@@ -16,15 +16,15 @@ __pycache__/
 dist/
 build/
 
-# Data
-data/
+# Data (ignore ONLY repo-root data dir; do NOT ignore src/data package)
+/data/
 *.parquet
 *.csv
 *.db
 *.sqlite
 
 # Logs
-logs/
+/logs/
 *.log
 
 # IDE

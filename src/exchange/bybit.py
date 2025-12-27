@@ -51,9 +51,16 @@ class BybitExchange:
         }
 
         if testnet:
+            # ccxt's canonical way to enable sandbox is set_sandbox_mode(True).
+            # Keep options.defaultType swap; sandbox mode will switch URLs.
             exchange_options["options"]["testnet"] = True
 
         self.exchange = ccxt.bybit(exchange_options)
+        if testnet:
+            try:
+                self.exchange.set_sandbox_mode(True)
+            except Exception as e:
+                logger.warning(f"Failed to enable sandbox mode via ccxt: {e}")
         logger.info(f"Initialized Bybit client (testnet={testnet})")
 
     def get_markets(self) -> Dict[str, Any]:

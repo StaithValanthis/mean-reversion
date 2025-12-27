@@ -1,5 +1,7 @@
 """Universe selection and filtering."""
-from typing import Dict, List, Optional, TYPE_CHECKING
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import pandas as pd
 
@@ -11,6 +13,83 @@ if TYPE_CHECKING:
     from src.data.storage import DataStorage
 
 logger = setup_logger(__name__)
+
+
+def _safe_float(x: Any, default: float = 0.0) -> float:
+    try:
+        if x is None:
+            return default
+        return float(x)
+    except Exception:
+        return default
+
+
+def _extract_volume_usdt(ticker: Dict[str, Any]) -> float:
+    """
+    Best-effort 24h USDT turnover from a ccxt ticker.
+
+    For Bybit USDT perps, `quoteVolume` is often missing; `info.turnover24h` is usually present.
+    """
+    if not ticker:
+        return 0.0
+
+    qv = _safe_float(ticker.get("quoteVolume"), 0.0)
+    if qv > 0:
+        return qv
+
+    base_v = _safe_float(ticker.get("baseVolume"), 0.0)
+    last = _safe_float(ticker.get("last") or ticker.get("close"), 0.0)
+    if base_v > 0 and last > 0:
+        return base_v * last
+
+    info = ticker.get("info") or {}
+    for k in ("turnover24h", "turnover_24h", "quoteVolume", "quote_volume"):
+        v = _safe_float(info.get(k), 0.0)
+        if v > 0:
+            return v
+
+    vol24 = _safe_float(info.get("volume24h") or info.get("volume_24h"), 0.0)
+    if vol24 > 0 and last > 0:
+        return vol24 * last
+
+    return 0.0
+
+
+def _is_linear_usdt_swap(market_info: Dict[str, Any], quote: str, contract_type: str) -> bool:
+    if not market_info:
+        return False
+    if not market_info.get("active", True):
+        return False
+
+    if contract_type == "swap":
+        if market_info.get("swap") is False and market_info.get("type") not in ("swap", "perpetual"):
+            return False
+    else:
+        if market_info.get("type") != contract_type:
+            return False
+
+    if market_info.get("linear") is False:
+        return False
+
+    q = quote.upper()
+    settle = (market_info.get("settle") or market_info.get("settlement") or "").upper()
+    quote_ccxt = (market_info.get("quote") or "").upper()
+    if settle and settle != q:
+        return False
+    if quote_ccxt and quote_ccxt != q:
+        return False
+
+    if market_info.get("contract") is False:
+        return False
+
+    return True
+
+
+def _symbol_in_blacklist(symbol: str, blacklist_set: set[str]) -> bool:
+    if symbol in blacklist_set:
+        return True
+    compact = symbol.replace("/", "").replace(":", "").replace("-", "").upper()
+    return compact in blacklist_set
 
 
 def select_universe(
@@ -42,7 +121,7 @@ def select_universe(
         List of selected symbols (normalized)
     """
     blacklist = blacklist or []
-    blacklist_set = set(blacklist)
+    blacklist_set = {b.replace("/", "").replace(":", "").replace("-", "").upper() for b in blacklist}
 
     logger.info(f"Selecting universe: top_n={top_n}, min_volume={min_24h_volume_usdt}")
 
@@ -54,33 +133,34 @@ def select_universe(
         candidates = []
 
         for symbol, market_info in markets.items():
-            # Filter by contract type and quote
-            if market_info.get("type") != contract_type:
-                continue
-            if market_info.get("quote") != quote:
-                continue
-            if not market_info.get("active", True):
+            if not _is_linear_usdt_swap(market_info, quote=quote, contract_type=contract_type):
                 continue
 
-            # Check blacklist
-            if symbol in blacklist_set:
+            if _symbol_in_blacklist(symbol, blacklist_set):
                 continue
 
             # Get ticker data
-            ticker = tickers.get(symbol)
+            ticker = tickers.get(symbol) if tickers else None
+            if not ticker:
+                # Fallback: per-symbol ticker (slower, but robust)
+                try:
+                    ticker = exchange.get_ticker(symbol)
+                except Exception:
+                    ticker = None
             if not ticker:
                 continue
 
-            volume_usdt = ticker.get("quoteVolume", 0) or 0
+            volume_usdt = _extract_volume_usdt(ticker)
 
             if volume_usdt < min_24h_volume_usdt:
                 continue
 
-            # Check history if storage provided
+            # Optional history check if cache already exists.
+            # IMPORTANT: On a fresh VM, metadata may be missing; do not exclude in that case.
             if storage:
                 symbol_normalized = symbol.replace("/", "").replace(":USDT", "")
                 metadata = storage.get_metadata(symbol_normalized, timeframe)
-                if not metadata or metadata["num_bars"] < min_history_bars:
+                if metadata and metadata.get("num_bars", 0) < min_history_bars:
                     continue
 
             candidates.append((symbol, volume_usdt))
